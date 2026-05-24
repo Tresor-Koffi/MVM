@@ -1,0 +1,364 @@
+.inscription-page {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.inscription-header {
+  background: var(--dark);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255,255,255,0.85);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.brand-badge {
+  background: var(--primary);
+  color: white;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+
+.admin-link {
+  color: rgba(255,255,255,0.5);
+  font-size: 12px;
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+
+.admin-link:hover { color: var(--primary); }
+
+.inscription-container {
+  max-width: 820px;
+  margin: 24px auto;
+  padding: 0 16px 60px;
+}
+
+/* ── Steps bar ── */
+.steps-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  margin-bottom: 28px;
+  position: relative;
+}
+
+.steps-bar::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.step-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+
+.step-item.active .step-dot {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  box-shadow: 0 0 0 4px rgba(29,158,117,0.15);
+}
+
+.step-item.done .step-dot {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.step-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.step-item.active .step-label {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ── Form card ── */
+.inscription-form {
+  background: white;
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--dark);
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--primary-light);
+}
+
+.section-title + .section-title { margin-top: 28px; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.form-subsection { margin-bottom: 18px; }
+
+.subsection-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.field-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.required { color: var(--danger); margin-left: 2px; }
+
+.form-input {
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  background: white;
+  color: var(--text);
+}
+
+.form-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(29,158,117,0.08);
+}
+
+textarea.form-input { resize: vertical; min-height: 80px; }
+select.form-input { cursor: pointer; }
+
+/* ── Photo upload ── */
+.photo-required-note {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.photo-upload-area { margin-top: 8px; }
+
+.photo-placeholder {
+  width: 100%;
+  max-width: 260px;
+  aspect-ratio: 3/4;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 16px;
+  text-align: center;
+}
+
+.photo-placeholder:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+.photo-placeholder small { font-size: 11px; opacity: 0.7; }
+
+.photo-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.photo-preview {
+  width: 160px;
+  height: 213px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+}
+
+.btn-change-photo {
+  font-size: 13px;
+  color: var(--primary);
+  background: none;
+  border: 1px solid var(--primary);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-change-photo:hover { background: var(--primary); color: white; }
+
+/* ── Actions ── */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.btn-primary {
+  padding: 11px 24px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+.btn-primary:disabled { opacity: 0.65; cursor: not-allowed; }
+.btn-submit { min-width: 180px; }
+
+.btn-secondary {
+  padding: 11px 20px;
+  background: white;
+  color: var(--text);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+
+/* ── Success ── */
+.inscription-success {
+  max-width: 480px;
+  margin: 60px auto;
+  text-align: center;
+  padding: 36px 24px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+}
+
+.success-icon {
+  width: 64px;
+  height: 64px;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin: 0 auto 20px;
+}
+
+.inscription-success h2 { font-size: 20px; color: var(--dark); margin-bottom: 12px; }
+.inscription-success p  { color: var(--text-muted); margin-bottom: 8px; font-size: 14px; }
+.inscription-success .btn-primary { margin-top: 20px; }
+
+/* ── Mobile ── */
+@media (max-width: 640px) {
+  .inscription-form { padding: 20px 14px; }
+  .form-grid, .form-grid-3 { grid-template-columns: 1fr; }
+  .step-label { font-size: 9px; }
+  .step-dot { width: 28px; height: 28px; font-size: 11px; }
+
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-submit {
+    width: 100%;
+    text-align: center;
+    min-width: unset;
+    padding: 13px;
+    font-size: 15px;
+  }
+
+  .photo-placeholder {
+    max-width: 100%;
+    aspect-ratio: auto;
+    min-height: 160px;
+  }
+}
+
+@media (max-width: 375px) {
+  .inscription-container { padding: 0 12px 60px; }
+  .inscription-header { padding: 12px; }
+  .header-brand span:last-child { display: none; }
+  .step-label { font-size: 8px; }
+  .steps-bar::before { display: none; }
+  .inscription-success { margin: 32px auto; padding: 24px 16px; }
+}

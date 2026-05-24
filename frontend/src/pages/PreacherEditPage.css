@@ -1,0 +1,20 @@
+.edit-page { padding-bottom: 40px; }
+
+.edit-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+/* detail-topbar is defined in PreacherDetailPage.css and reused here */
+.detail-topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .edit-title { font-size: 14px; }
+}
