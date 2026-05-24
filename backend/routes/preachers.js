@@ -10,7 +10,7 @@ const router = express.Router();
 // Public: submit registration
 router.post('/inscription', upload.single('photo'), async (req, res) => {
   try {
-    const data = req.body;
+    const d = req.body;
     const photoPath = req.file ? await processPhoto(req.file) : null;
 
     const result = await dbRun(`
@@ -25,23 +25,23 @@ router.post('/inscription', upload.single('photo'), async (req, res) => {
         urgence2_nom, urgence2_lien, urgence2_telephone,
         groupe_sanguin, photo, statut
       ) VALUES (
-        ?,?,?,?,?,?,?,?,?,?,
-        ?,?,?,?,?,?,?,?,?,
-        ?,?,?,?,
-        ?,?,?,?,?,?,
-        ?,?,'en_attente'
-      )`,
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+        $11,$12,$13,$14,$15,$16,$17,$18,$19,
+        $20,$21,$22,$23,
+        $24,$25,$26,$27,$28,$29,
+        $30,$31,'en_attente'
+      ) RETURNING id`,
       [
-        data.prenom, data.nom, data.date_naissance || null, data.lieu_naissance || null,
-        data.nationalite || null, data.situation_matrimoniale || null,
-        data.telephone1 || null, data.telephone2 || null, data.email || null, data.adresse || null,
-        data.pere_nom || null, data.pere_telephone || null, data.pere_statut || null,
-        data.mere_nom || null, data.mere_telephone || null, data.mere_statut || null,
-        data.conjoint_nom || null, data.conjoint_telephone || null, parseInt(data.nombre_enfants) || 0,
-        data.fonction || null, data.pays_affectation || null, data.eglise_locale || null, data.date_bapteme || null,
-        data.urgence1_nom || null, data.urgence1_lien || null, data.urgence1_telephone || null,
-        data.urgence2_nom || null, data.urgence2_lien || null, data.urgence2_telephone || null,
-        data.groupe_sanguin || null, photoPath,
+        d.prenom, d.nom, d.date_naissance || null, d.lieu_naissance || null,
+        d.nationalite || null, d.situation_matrimoniale || null,
+        d.telephone1 || null, d.telephone2 || null, d.email || null, d.adresse || null,
+        d.pere_nom || null, d.pere_telephone || null, d.pere_statut || null,
+        d.mere_nom || null, d.mere_telephone || null, d.mere_statut || null,
+        d.conjoint_nom || null, d.conjoint_telephone || null, parseInt(d.nombre_enfants) || 0,
+        d.fonction || null, d.pays_affectation || null, d.eglise_locale || null, d.date_bapteme || null,
+        d.urgence1_nom || null, d.urgence1_lien || null, d.urgence1_telephone || null,
+        d.urgence2_nom || null, d.urgence2_lien || null, d.urgence2_telephone || null,
+        d.groupe_sanguin || null, photoPath,
       ]
     );
 
@@ -52,16 +52,21 @@ router.post('/inscription', upload.single('photo'), async (req, res) => {
   }
 });
 
-// Admin: stats for dashboard (before /:id)
+// Admin: stats (before /:id)
 router.get('/stats', requireAuth, async (req, res) => {
   try {
-    const totalRow = await dbGet('SELECT COUNT(*) as cnt FROM preachers', []);
-    const enAttenteRow = await dbGet("SELECT COUNT(*) as cnt FROM preachers WHERE statut = 'en_attente'", []);
-    const valideRow = await dbGet("SELECT COUNT(*) as cnt FROM preachers WHERE statut = 'valide'", []);
-    const zones = await dbAll(
-      "SELECT pays_affectation, COUNT(*) as cnt FROM preachers WHERE pays_affectation IS NOT NULL AND pays_affectation != '' GROUP BY pays_affectation ORDER BY cnt DESC",
-      []
-    );
+    const [totalRow, enAttenteRow, valideRow, zones] = await Promise.all([
+      dbGet('SELECT COUNT(*)::int AS cnt FROM preachers', []),
+      dbGet("SELECT COUNT(*)::int AS cnt FROM preachers WHERE statut = 'en_attente'", []),
+      dbGet("SELECT COUNT(*)::int AS cnt FROM preachers WHERE statut = 'valide'", []),
+      dbAll(
+        `SELECT pays_affectation, COUNT(*)::int AS cnt
+         FROM preachers
+         WHERE pays_affectation IS NOT NULL AND pays_affectation <> ''
+         GROUP BY pays_affectation ORDER BY cnt DESC`,
+        []
+      ),
+    ]);
     res.json({ total: totalRow.cnt, en_attente: enAttenteRow.cnt, valide: valideRow.cnt, zones });
   } catch (err) {
     console.error(err);
@@ -86,8 +91,9 @@ router.get('/export/csv', requireAuth, async (req, res) => {
       'Groupe Sanguin', 'Statut', 'Date Inscription',
     ];
 
-    const escape = (v) => {
+    const fmt = (v) => {
       if (v == null) return '';
+      if (v instanceof Date) return v.toISOString().slice(0, 19).replace('T', ' ');
       const s = String(v);
       return (s.includes(',') || s.includes('"') || s.includes('\n'))
         ? `"${s.replace(/"/g, '""')}"` : s;
@@ -105,7 +111,7 @@ router.get('/export/csv', requireAuth, async (req, res) => {
         r.urgence1_nom, r.urgence1_lien, r.urgence1_telephone,
         r.urgence2_nom, r.urgence2_lien, r.urgence2_telephone,
         r.groupe_sanguin, r.statut, r.created_at,
-      ].map(escape).join(','));
+      ].map(fmt).join(','));
     });
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -124,25 +130,29 @@ router.get('/', requireAuth, async (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const where = [];
     const params = [];
+    let p = 1; // PostgreSQL parameter index
 
     if (search) {
-      where.push('(prenom LIKE ? OR nom LIKE ? OR email LIKE ? OR telephone1 LIKE ?)');
+      where.push(`(prenom ILIKE $${p} OR nom ILIKE $${p+1} OR email ILIKE $${p+2} OR telephone1 ILIKE $${p+3})`);
       const s = `%${search}%`;
       params.push(s, s, s, s);
+      p += 4;
     }
-    if (statut) { where.push('statut = ?'); params.push(statut); }
-    if (zone)   { where.push('pays_affectation = ?'); params.push(zone); }
+    if (statut) { where.push(`statut = $${p}`);              params.push(statut); p++; }
+    if (zone)   { where.push(`pays_affectation = $${p}`);    params.push(zone);   p++; }
 
     const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
-    const countRow = await dbGet(`SELECT COUNT(*) as cnt FROM preachers ${whereClause}`, params);
-    const rows = await dbAll(
-      `SELECT id, prenom, nom, email, telephone1, fonction, pays_affectation,
-              eglise_locale, statut, photo, created_at
-       FROM preachers ${whereClause}
-       ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-      [...params, parseInt(limit), offset]
-    );
+    const [countRow, rows] = await Promise.all([
+      dbGet(`SELECT COUNT(*)::int AS cnt FROM preachers ${whereClause}`, params),
+      dbAll(
+        `SELECT id, prenom, nom, email, telephone1, fonction, pays_affectation,
+                eglise_locale, statut, photo, created_at
+         FROM preachers ${whereClause}
+         ORDER BY created_at DESC LIMIT $${p} OFFSET $${p+1}`,
+        [...params, parseInt(limit), offset]
+      ),
+    ]);
 
     res.json({ data: rows, total: countRow.cnt, page: parseInt(page), limit: parseInt(limit) });
   } catch (err) {
@@ -154,7 +164,7 @@ router.get('/', requireAuth, async (req, res) => {
 // Admin: get one preacher
 router.get('/:id', requireAuth, async (req, res) => {
   try {
-    const row = await dbGet('SELECT * FROM preachers WHERE id = ?', [req.params.id]);
+    const row = await dbGet('SELECT * FROM preachers WHERE id = $1', [req.params.id]);
     if (!row) return res.status(404).json({ error: 'Prédicateur introuvable' });
     res.json(row);
   } catch (err) {
@@ -163,7 +173,7 @@ router.get('/:id', requireAuth, async (req, res) => {
   }
 });
 
-// Admin: validate/reject
+// Admin: validate / reject
 router.patch('/:id/statut', requireAuth, requireRole('superadmin', 'secretaire'), async (req, res) => {
   const { statut } = req.body;
   if (!['valide', 'rejete', 'en_attente'].includes(statut)) {
@@ -171,7 +181,9 @@ router.patch('/:id/statut', requireAuth, requireRole('superadmin', 'secretaire')
   }
   try {
     await dbRun(
-      `UPDATE preachers SET statut = ?, validated_by = ?, validated_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`,
+      `UPDATE preachers
+       SET statut=$1, validated_by=$2, validated_at=NOW(), updated_at=NOW()
+       WHERE id=$3`,
       [statut, req.user.id, req.params.id]
     );
     res.json({ success: true });
@@ -184,10 +196,10 @@ router.patch('/:id/statut', requireAuth, requireRole('superadmin', 'secretaire')
 // Admin: edit preacher
 router.put('/:id', requireAuth, requireRole('superadmin', 'secretaire'), upload.single('photo'), async (req, res) => {
   try {
-    const existing = await dbGet('SELECT * FROM preachers WHERE id = ?', [req.params.id]);
+    const existing = await dbGet('SELECT * FROM preachers WHERE id = $1', [req.params.id]);
     if (!existing) return res.status(404).json({ error: 'Prédicateur introuvable' });
 
-    const data = req.body;
+    const d = req.body;
     let photoPath = existing.photo;
 
     if (req.file) {
@@ -200,27 +212,27 @@ router.put('/:id', requireAuth, requireRole('superadmin', 'secretaire'), upload.
 
     await dbRun(`
       UPDATE preachers SET
-        prenom=?, nom=?, date_naissance=?, lieu_naissance=?, nationalite=?,
-        situation_matrimoniale=?, telephone1=?, telephone2=?, email=?, adresse=?,
-        pere_nom=?, pere_telephone=?, pere_statut=?,
-        mere_nom=?, mere_telephone=?, mere_statut=?,
-        conjoint_nom=?, conjoint_telephone=?, nombre_enfants=?,
-        fonction=?, pays_affectation=?, eglise_locale=?, date_bapteme=?,
-        urgence1_nom=?, urgence1_lien=?, urgence1_telephone=?,
-        urgence2_nom=?, urgence2_lien=?, urgence2_telephone=?,
-        groupe_sanguin=?, photo=?, updated_at=datetime('now')
-      WHERE id=?`,
+        prenom=$1, nom=$2, date_naissance=$3, lieu_naissance=$4, nationalite=$5,
+        situation_matrimoniale=$6, telephone1=$7, telephone2=$8, email=$9, adresse=$10,
+        pere_nom=$11, pere_telephone=$12, pere_statut=$13,
+        mere_nom=$14, mere_telephone=$15, mere_statut=$16,
+        conjoint_nom=$17, conjoint_telephone=$18, nombre_enfants=$19,
+        fonction=$20, pays_affectation=$21, eglise_locale=$22, date_bapteme=$23,
+        urgence1_nom=$24, urgence1_lien=$25, urgence1_telephone=$26,
+        urgence2_nom=$27, urgence2_lien=$28, urgence2_telephone=$29,
+        groupe_sanguin=$30, photo=$31, updated_at=NOW()
+      WHERE id=$32`,
       [
-        data.prenom, data.nom, data.date_naissance || null, data.lieu_naissance || null,
-        data.nationalite || null, data.situation_matrimoniale || null,
-        data.telephone1 || null, data.telephone2 || null, data.email || null, data.adresse || null,
-        data.pere_nom || null, data.pere_telephone || null, data.pere_statut || null,
-        data.mere_nom || null, data.mere_telephone || null, data.mere_statut || null,
-        data.conjoint_nom || null, data.conjoint_telephone || null, parseInt(data.nombre_enfants) || 0,
-        data.fonction || null, data.pays_affectation || null, data.eglise_locale || null, data.date_bapteme || null,
-        data.urgence1_nom || null, data.urgence1_lien || null, data.urgence1_telephone || null,
-        data.urgence2_nom || null, data.urgence2_lien || null, data.urgence2_telephone || null,
-        data.groupe_sanguin || null, photoPath,
+        d.prenom, d.nom, d.date_naissance || null, d.lieu_naissance || null,
+        d.nationalite || null, d.situation_matrimoniale || null,
+        d.telephone1 || null, d.telephone2 || null, d.email || null, d.adresse || null,
+        d.pere_nom || null, d.pere_telephone || null, d.pere_statut || null,
+        d.mere_nom || null, d.mere_telephone || null, d.mere_statut || null,
+        d.conjoint_nom || null, d.conjoint_telephone || null, parseInt(d.nombre_enfants) || 0,
+        d.fonction || null, d.pays_affectation || null, d.eglise_locale || null, d.date_bapteme || null,
+        d.urgence1_nom || null, d.urgence1_lien || null, d.urgence1_telephone || null,
+        d.urgence2_nom || null, d.urgence2_lien || null, d.urgence2_telephone || null,
+        d.groupe_sanguin || null, photoPath,
         req.params.id,
       ]
     );
@@ -235,14 +247,14 @@ router.put('/:id', requireAuth, requireRole('superadmin', 'secretaire'), upload.
 // Admin: delete (superadmin only)
 router.delete('/:id', requireAuth, requireRole('superadmin'), async (req, res) => {
   try {
-    const existing = await dbGet('SELECT photo FROM preachers WHERE id = ?', [req.params.id]);
+    const existing = await dbGet('SELECT photo FROM preachers WHERE id = $1', [req.params.id]);
     if (!existing) return res.status(404).json({ error: 'Introuvable' });
 
     if (existing.photo) {
       const p = path.join(__dirname, '../../uploads', existing.photo);
       if (fs.existsSync(p)) fs.unlinkSync(p);
     }
-    await dbRun('DELETE FROM preachers WHERE id = ?', [req.params.id]);
+    await dbRun('DELETE FROM preachers WHERE id = $1', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
     console.error(err);

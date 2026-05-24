@@ -12,7 +12,7 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ error: 'Identifiants requis' });
   }
   try {
-    const user = await dbGet('SELECT * FROM users WHERE username = ?', [username]);
+    const user = await dbGet('SELECT * FROM users WHERE username = $1', [username]);
     if (!user || !bcrypt.compareSync(password, user.password)) {
       return res.status(401).json({ error: 'Identifiants incorrects' });
     }

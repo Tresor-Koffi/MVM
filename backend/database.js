@@ -1,37 +1,27 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 
-const DB_PATH = path.join(__dirname, 'mvm.db');
-let db;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL
+    ? { rejectUnauthorized: false }
+    : false,
+});
 
-function getDb() {
-  if (!db) {
-    db = new sqlite3.Database(DB_PATH, (err) => {
-      if (err) console.error('DB connection error:', err);
-      else console.log('Connected to SQLite database.');
-    });
-    db.serialize(() => {
-      db.run('PRAGMA journal_mode = WAL');
-      db.run('PRAGMA foreign_keys = ON');
-      initSchema();
-    });
-  }
-  return db;
-}
-
-function initSchema() {
-  db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+async function initDb() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
       username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       role TEXT NOT NULL CHECK(role IN ('superadmin', 'secretaire', 'visiteur')),
-      created_at TEXT DEFAULT (datetime('now'))
-    )`);
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 
-    db.run(`CREATE TABLE IF NOT EXISTS preachers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS preachers (
+      id SERIAL PRIMARY KEY,
       prenom TEXT NOT NULL,
       nom TEXT NOT NULL,
       date_naissance TEXT,
@@ -64,79 +54,39 @@ function initSchema() {
       groupe_sanguin TEXT,
       photo TEXT,
       statut TEXT DEFAULT 'en_attente' CHECK(statut IN ('en_attente', 'valide', 'rejete')),
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       validated_by INTEGER REFERENCES users(id),
-      validated_at TEXT
-    )`);
+      validated_at TIMESTAMP
+    )
+  `);
 
-    // Seed default users
-    db.get('SELECT COUNT(*) as cnt FROM users', (err, row) => {
-      if (err || row.cnt > 0) return;
-      const accounts = [
-        ['superadmin', bcrypt.hashSync('admin123', 10), 'superadmin'],
-        ['secretaire', bcrypt.hashSync('sec123', 10), 'secretaire'],
-        ['visiteur', bcrypt.hashSync('vis123', 10), 'visiteur'],
-      ];
-      const stmt = db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, ?)');
-      accounts.forEach(([u, p, r]) => stmt.run(u, p, r));
-      stmt.finalize();
-      console.log('Default admin accounts created.');
-    });
+  // Seed default users once
+  const { rows } = await pool.query('SELECT COUNT(*) AS cnt FROM users');
+  if (parseInt(rows[0].cnt) === 0) {
+    const sql = 'INSERT INTO users (username, password, role) VALUES ($1, $2, $3)';
+    await pool.query(sql, ['superadmin', bcrypt.hashSync('admin123', 10), 'superadmin']);
+    await pool.query(sql, ['secretaire', bcrypt.hashSync('sec123', 10),  'secretaire']);
+    await pool.query(sql, ['visiteur',   bcrypt.hashSync('vis123', 10),  'visiteur']);
+    console.log('Default admin accounts created.');
+  }
 
-    // Run schema migrations for existing databases
-    runMigrations();
-  });
+  console.log('Database ready.');
 }
 
-function runMigrations() {
-  db.all('PRAGMA table_info(preachers)', (err, columns) => {
-    if (err || !columns || columns.length === 0) return;
-    const colNames = columns.map(c => c.name);
-
-    if (colNames.includes('zone_affectation') && !colNames.includes('pays_affectation')) {
-      db.run('ALTER TABLE preachers RENAME COLUMN zone_affectation TO pays_affectation', (e) => {
-        if (e) console.error('Migration error (rename zone_affectation):', e.message);
-        else console.log('Migration: zone_affectation → pays_affectation');
-      });
-    }
-
-    ['grade', 'ministere', 'date_ordination', 'lieu_ordination', 'formations', 'allergies'].forEach(col => {
-      if (colNames.includes(col)) {
-        db.run(`ALTER TABLE preachers DROP COLUMN ${col}`, (e) => {
-          if (e) console.error(`Migration error (drop ${col}):`, e.message);
-          else console.log(`Migration: dropped column ${col}`);
-        });
-      }
-    });
-  });
+async function dbRun(sql, params = []) {
+  const result = await pool.query(sql, params);
+  return { lastID: result.rows[0]?.id ?? null, rowCount: result.rowCount };
 }
 
-function dbRun(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    getDb().run(sql, params, function (err) {
-      if (err) reject(err);
-      else resolve({ lastID: this.lastID, changes: this.changes });
-    });
-  });
+async function dbGet(sql, params = []) {
+  const result = await pool.query(sql, params);
+  return result.rows[0] ?? null;
 }
 
-function dbGet(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    getDb().get(sql, params, (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
+async function dbAll(sql, params = []) {
+  const result = await pool.query(sql, params);
+  return result.rows;
 }
 
-function dbAll(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    getDb().all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
-}
-
-module.exports = { getDb, dbRun, dbGet, dbAll };
+module.exports = { pool, initDb, dbRun, dbGet, dbAll };
