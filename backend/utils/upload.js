@@ -1,22 +1,16 @@
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const crypto = require('crypto');
+const { v2: cloudinary } = require('cloudinary');
+const { Readable } = require('stream');
 
-const UPLOADS_DIR = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-    const name = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}${ext}`;
-    cb(null, name);
-  },
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Keep file in memory — Cloudinary receives the buffer directly
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (/jpeg|jpg|png|webp/.test(file.mimetype)) cb(null, true);
@@ -24,8 +18,34 @@ const upload = multer({
   },
 });
 
-async function processPhoto(file) {
-  return file.filename;
+function bufferToStream(buffer) {
+  const readable = new Readable();
+  readable.push(buffer);
+  readable.push(null);
+  return readable;
 }
 
-module.exports = { upload, processPhoto };
+async function processPhoto(file) {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder: 'mvm_predicateurs', resource_type: 'image' },
+      (err, result) => {
+        if (err) return reject(err);
+        resolve(result.secure_url);
+      }
+    );
+    bufferToStream(file.buffer).pipe(uploadStream);
+  });
+}
+
+// Extract Cloudinary public_id from a secure_url and delete the asset
+async function deletePhoto(url) {
+  if (!url || !url.includes('cloudinary.com')) return;
+  // URL: https://res.cloudinary.com/{cloud}/image/upload/v{n}/{public_id}.{ext}
+  const match = url.match(/\/image\/upload\/(?:v\d+\/)?(.+)\.\w+$/);
+  if (match) {
+    await cloudinary.uploader.destroy(match[1]).catch(console.error);
+  }
+}
+
+module.exports = { upload, processPhoto, deletePhoto };

@@ -1,9 +1,7 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 const { dbRun, dbGet, dbAll } = require('../database');
 const { requireAuth, requireRole } = require('../middleware/auth');
-const { upload, processPhoto } = require('../utils/upload');
+const { upload, processPhoto, deletePhoto } = require('../utils/upload');
 
 const router = express.Router();
 
@@ -203,11 +201,8 @@ router.put('/:id', requireAuth, requireRole('superadmin', 'secretaire'), upload.
     let photoPath = existing.photo;
 
     if (req.file) {
+      if (existing.photo) await deletePhoto(existing.photo);
       photoPath = await processPhoto(req.file);
-      if (existing.photo) {
-        const oldPath = path.join(__dirname, '../../uploads', existing.photo);
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
     }
 
     await dbRun(`
@@ -250,10 +245,7 @@ router.delete('/:id', requireAuth, requireRole('superadmin'), async (req, res) =
     const existing = await dbGet('SELECT photo FROM preachers WHERE id = $1', [req.params.id]);
     if (!existing) return res.status(404).json({ error: 'Introuvable' });
 
-    if (existing.photo) {
-      const p = path.join(__dirname, '../../uploads', existing.photo);
-      if (fs.existsSync(p)) fs.unlinkSync(p);
-    }
+    if (existing.photo) await deletePhoto(existing.photo);
     await dbRun('DELETE FROM preachers WHERE id = $1', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
