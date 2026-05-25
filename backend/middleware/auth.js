@@ -3,12 +3,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'mvm_secret_2024';
 
 function requireAuth(req, res, next) {
   const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) {
+  const raw = (header && header.startsWith('Bearer ')) ? header.slice(7) : req.query.token;
+  if (!raw) {
     return res.status(401).json({ error: 'Non authentifié' });
   }
   try {
-    const token = header.slice(7);
-    req.user = jwt.verify(token, JWT_SECRET);
+    req.user = jwt.verify(raw, JWT_SECRET);
     next();
   } catch {
     res.status(401).json({ error: 'Token invalide' });
