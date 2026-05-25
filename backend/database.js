@@ -61,6 +61,16 @@ async function initDb() {
     )
   `);
 
+  // Remove duplicate emails/phones before creating unique indexes (keeps most recent entry)
+  await pool.query(`
+    DELETE FROM preachers a USING preachers b
+    WHERE a.id < b.id AND a.email = b.email AND a.email IS NOT NULL AND a.email <> ''
+  `);
+  await pool.query(`
+    DELETE FROM preachers a USING preachers b
+    WHERE a.id < b.id AND a.telephone1 = b.telephone1 AND a.telephone1 IS NOT NULL AND a.telephone1 <> ''
+  `);
+
   // Partial unique indexes — safe to run on every startup
   await pool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_preachers_telephone1
