@@ -22,7 +22,7 @@ export default function PreacherEditPage() {
     api.get(`/predicateurs/${id}`)
       .then(r => {
         setForm(r.data);
-        if (r.data.photo) setPhotoPreview(`/uploads/${r.data.photo}`);
+        if (r.data.photo) setPhotoPreview(r.data.photo.startsWith('http') ? r.data.photo : `/uploads/${r.data.photo}`);
       })
       .catch(() => { toast.error('Fiche introuvable'); navigate('/admin/predicateurs'); })
       .finally(() => setLoading(false));

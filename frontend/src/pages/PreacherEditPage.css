@@ -17,4 +17,15 @@
 
 @media (max-width: 640px) {
   .edit-title { font-size: 14px; }
+  .detail-topbar { flex-direction: column; align-items: flex-start; gap: 8px; }
+}
+
+@media (max-width: 375px) {
+  .edit-title {
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100vw - 32px);
+  }
 }

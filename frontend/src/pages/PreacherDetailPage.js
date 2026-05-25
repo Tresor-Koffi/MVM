@@ -85,7 +85,7 @@ export default function PreacherDetailPage() {
         <div className="detail-hero">
           <div className="hero-photo-wrap">
             {data.photo
-              ? <img src={`/uploads/${data.photo}`} alt={fullName} className="hero-photo" />
+              ? <img src={data.photo.startsWith('http') ? data.photo : `/uploads/${data.photo}`} alt={fullName} className="hero-photo" />
               : <div className="hero-avatar">{data.prenom?.charAt(0)}{data.nom?.charAt(0)}</div>
             }
           </div>

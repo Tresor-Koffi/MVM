@@ -55,6 +55,12 @@ export default function InscriptionPage() {
     e.preventDefault();
     if (!form.prenom || !form.nom) {
       toast.error('Prénom et nom obligatoires');
+      setStep(0);
+      return;
+    }
+    if (!form.telephone1) {
+      toast.error('Le numéro de téléphone principal est obligatoire');
+      setStep(0);
       return;
     }
     if (!photo) {
@@ -73,7 +79,13 @@ export default function InscriptionPage() {
       });
       setSubmitted(true);
     } catch (err) {
-      toast.error(err.response?.data?.error || "Erreur lors de l'envoi. Réessayez.");
+      const data = err.response?.data;
+      if (err.response?.status === 409) {
+        toast.error(data?.error || 'Ce prédicateur est déjà enregistré');
+        if (data?.field === 'telephone1' || data?.field === 'email') setStep(0);
+      } else {
+        toast.error(data?.error || "Erreur lors de l'envoi. Réessayez.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -198,7 +210,7 @@ function StepIdentite({ form, set }) {
           <Select value={form.situation_matrimoniale} onChange={set('situation_matrimoniale')}
             options={['Célibataire', 'Marié(e)', 'Divorcé(e)', 'Veuf/Veuve']} />
         </Field>
-        <Field label="Téléphone principal"><Input value={form.telephone1} onChange={set('telephone1')} placeholder="+225..." type="tel" /></Field>
+        <Field label="Téléphone principal" required><Input value={form.telephone1} onChange={set('telephone1')} placeholder="+225..." type="tel" /></Field>
         <Field label="Téléphone secondaire"><Input value={form.telephone2} onChange={set('telephone2')} placeholder="+225..." type="tel" /></Field>
         <Field label="Email"><Input type="email" value={form.email} onChange={set('email')} placeholder="exemple@email.com" /></Field>
       </div>

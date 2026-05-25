@@ -18,12 +18,15 @@
   padding: 9px 16px;
   background: var(--primary);
   color: white;
+  border: none;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
+  font-family: inherit;
   transition: background 0.15s;
   text-decoration: none;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .btn-export:hover { background: var(--primary-dark); }

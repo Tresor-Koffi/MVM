@@ -70,14 +70,21 @@ export default function PreachersListPage() {
           <h1>Prédicateurs</h1>
           <p className="page-subtitle">{total} fiche(s) au total</p>
         </div>
-        <a href="/api/predicateurs/export/csv" download className="btn-export">
+        <button
+          className="btn-export"
+          onClick={() => {
+            const token = localStorage.getItem('mvm_token');
+            const base = process.env.REACT_APP_API_URL || '';
+            window.open(`${base}/api/predicateurs/export/csv?token=${token}`, '_blank');
+          }}
+        >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
             <polyline points="7 10 12 15 17 10"/>
             <line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
           Exporter CSV
-        </a>
+        </button>
       </div>
 
       <div className="filters-bar">
@@ -148,7 +155,7 @@ export default function PreachersListPage() {
                     <tr key={p.id} onClick={() => navigate(`/admin/predicateurs/${p.id}`)} className="clickable-row">
                       <td>
                         {p.photo
-                          ? <img src={`/uploads/${p.photo}`} alt="" className="list-photo" />
+                          ? <img src={p.photo.startsWith('http') ? p.photo : `/uploads/${p.photo}`} alt="" className="list-photo" />
                           : <div className="list-avatar">{p.prenom?.charAt(0)}{p.nom?.charAt(0)}</div>
                         }
                       </td>
@@ -190,7 +197,7 @@ export default function PreachersListPage() {
                 <div key={p.id} className="preacher-card" onClick={() => navigate(`/admin/predicateurs/${p.id}`)}>
                   <div className="pcard-photo">
                     {p.photo
-                      ? <img src={`/uploads/${p.photo}`} alt="" />
+                      ? <img src={p.photo.startsWith('http') ? p.photo : `/uploads/${p.photo}`} alt="" />
                       : <div className="pcard-avatar">{p.prenom?.charAt(0)}{p.nom?.charAt(0)}</div>
                     }
                   </div>

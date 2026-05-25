@@ -92,13 +92,17 @@ export default function DashboardPage() {
             <span>{stats?.en_attente ?? 0} fiche(s) en attente</span>
           </div>
         </button>
-        <a className="action-card" href="/api/predicateurs/export/csv" download>
+        <button className="action-card" onClick={() => {
+          const token = localStorage.getItem('mvm_token');
+          const base = process.env.REACT_APP_API_URL || '';
+          window.open(`${base}/api/predicateurs/export/csv?token=${token}`, '_blank');
+        }}>
           <DownloadIcon />
           <div>
             <strong>Exporter CSV</strong>
             <span>Télécharger toutes les fiches</span>
           </div>
-        </a>
+        </button>
       </div>
     </div>
   );
