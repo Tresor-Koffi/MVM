@@ -25,15 +25,19 @@ function bufferToStream(buffer) {
   return readable;
 }
 
-async function processPhoto(file) {
+// identifier: phone number used as stable Cloudinary public_id (overwrite on re-registration)
+async function processPhoto(file, identifier = null) {
+  const options = { folder: 'mvm_predicateurs', resource_type: 'image' };
+  if (identifier) {
+    const sanitized = String(identifier).replace(/[^a-zA-Z0-9_+\-]/g, '_');
+    options.public_id = `TEL_${sanitized}`;
+    options.overwrite = true;
+  }
   return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      { folder: 'mvm_predicateurs', resource_type: 'image' },
-      (err, result) => {
-        if (err) return reject(err);
-        resolve(result.secure_url);
-      }
-    );
+    const uploadStream = cloudinary.uploader.upload_stream(options, (err, result) => {
+      if (err) return reject(err);
+      resolve(result.secure_url);
+    });
     bufferToStream(file.buffer).pipe(uploadStream);
   });
 }

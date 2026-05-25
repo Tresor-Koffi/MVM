@@ -9,7 +9,18 @@ const router = express.Router();
 router.post('/inscription', upload.single('photo'), async (req, res) => {
   try {
     const d = req.body;
-    const photoPath = req.file ? await processPhoto(req.file) : null;
+
+    // Duplicate checks
+    if (d.telephone1) {
+      const dup = await dbGet('SELECT id FROM preachers WHERE telephone1 = $1', [d.telephone1]);
+      if (dup) return res.status(409).json({ error: 'Un prédicateur avec ce numéro de téléphone existe déjà', field: 'telephone1' });
+    }
+    if (d.email) {
+      const dup = await dbGet('SELECT id FROM preachers WHERE email = $1', [d.email]);
+      if (dup) return res.status(409).json({ error: 'Un prédicateur avec cet email existe déjà', field: 'email' });
+    }
+
+    const photoPath = req.file ? await processPhoto(req.file, d.telephone1 || null) : null;
 
     const result = await dbRun(`
       INSERT INTO preachers (
@@ -198,11 +209,22 @@ router.put('/:id', requireAuth, requireRole('superadmin', 'secretaire'), upload.
     if (!existing) return res.status(404).json({ error: 'Prédicateur introuvable' });
 
     const d = req.body;
+
+    // Duplicate checks (exclude the record being edited)
+    if (d.telephone1) {
+      const dup = await dbGet('SELECT id FROM preachers WHERE telephone1 = $1 AND id != $2', [d.telephone1, req.params.id]);
+      if (dup) return res.status(409).json({ error: 'Un prédicateur avec ce numéro de téléphone existe déjà', field: 'telephone1' });
+    }
+    if (d.email) {
+      const dup = await dbGet('SELECT id FROM preachers WHERE email = $1 AND id != $2', [d.email, req.params.id]);
+      if (dup) return res.status(409).json({ error: 'Un prédicateur avec cet email existe déjà', field: 'email' });
+    }
+
     let photoPath = existing.photo;
 
     if (req.file) {
-      if (existing.photo) await deletePhoto(existing.photo);
-      photoPath = await processPhoto(req.file);
+      if (existing.photo && !d.telephone1) await deletePhoto(existing.photo);
+      photoPath = await processPhoto(req.file, d.telephone1 || null);
     }
 
     await dbRun(`

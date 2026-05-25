@@ -61,6 +61,18 @@ async function initDb() {
     )
   `);
 
+  // Partial unique indexes — safe to run on every startup
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_preachers_telephone1
+    ON preachers(telephone1)
+    WHERE telephone1 IS NOT NULL AND telephone1 <> ''
+  `);
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_preachers_email
+    ON preachers(email)
+    WHERE email IS NOT NULL AND email <> ''
+  `);
+
   // Seed default users once
   const { rows } = await pool.query('SELECT COUNT(*) AS cnt FROM users');
   if (parseInt(rows[0].cnt) === 0) {
