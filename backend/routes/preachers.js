@@ -83,8 +83,15 @@ router.get('/stats', requireAuth, async (req, res) => {
   }
 });
 
-// Admin: CSV export (before /:id)
-router.get('/export/csv', requireAuth, async (req, res) => {
+// Admin: CSV export (before /:id) — accepts token from query param for browser tab downloads
+router.get('/export/csv', async (req, res) => {
+  const jwt = require('jsonwebtoken');
+  const { JWT_SECRET } = require('../middleware/auth');
+  const token = req.query.token || (req.headers.authorization?.startsWith('Bearer ') && req.headers.authorization.slice(7));
+  if (!token) return res.status(401).json({ error: 'Non authentifié' });
+  try { req.user = jwt.verify(token, JWT_SECRET); }
+  catch (e) { return res.status(401).json({ error: 'Token invalide' }); }
+
   try {
     const rows = await dbAll('SELECT * FROM preachers ORDER BY created_at DESC', []);
 
